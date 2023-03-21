@@ -2,7 +2,7 @@
 
 import os
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import datetime, timedelta
 
 from github import Github
@@ -11,7 +11,7 @@ from jinja2 import Environment, FileSystemLoader
 gh = Github(os.environ['GITHUB_TOKEN'])
 
 repos = sys.argv[1:]
-counter = defaultdict(Counter)
+counter = Counter()
 all_users = set()
 
 now = datetime.now()
@@ -48,7 +48,11 @@ for repo_name in repos:
         all_users.update(reviewers)
 
         for reviewer in reviewers:
-            counter[pr.user.name][reviewer] += 1
+            # We need to merge together A->B and B->A.  This is a pain to do
+            # later, so we'll pull them together into a single hash key right
+            # now.
+            key = tuple(sorted((pr.user.name, reviewer)))
+            counter[key] += 1
 
 print(counter)
 print(i)
@@ -61,15 +65,12 @@ for user in all_users:
     i += 1
 
 edges = []
-for author, reviewers in counter.items():
-    for reviewer, count in reviewers.items():
-        # FIXME: We create duplicate edges (from A->B and B->A) and need to
-        # merge them.
-        edges.append({
-            'from': users[author],
-            'to': users[reviewer],
-            'value': count,
-        })
+for people, count in counter.items():
+    edges.append({
+        'from': users[people[0]],
+        'to': users[people[1]],
+        'value': count,
+    })
 
 env = Environment(loader=FileSystemLoader('.'))
 with open('index.html', 'w') as f:
