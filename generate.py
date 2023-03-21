@@ -3,6 +3,7 @@
 import os
 import sys
 from collections import Counter, defaultdict
+from datetime import datetime, timedelta
 
 from github import Github
 
@@ -12,10 +13,19 @@ repos = sys.argv[1:]
 counter = defaultdict(Counter)
 all_users = set()
 
+now = datetime.now()
+time_limit = timedelta(days=(365/4))
+
 i = 0
 for repo_name in repos:
     repo = gh.get_repo(repo_name)
     for pr in repo.get_pulls(state='all', sort='updated', direction='desc'):
+        # Limit to only "recent" activity so a) it's more relevant and b) it
+        # doesn't take forever to run.
+        if (now - pr.updated_at) > time_limit:
+            print('stopping at {}'.format(pr.updated_at))
+            break
+
         i += 1
         print(pr.number)
         # People can submit multiple reviews of a PR, so we need to
