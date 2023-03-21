@@ -29,29 +29,36 @@ for repo_name in repos:
 
         i += 1
         print(pr.number)
+
+        author = pr.user.name
+        if author is None:
+            # Sometimes people don't have a real name set on Github.
+            author = pr.user.login
+
         # People can submit multiple reviews of a PR, so we need to
         # de-duplicate them.
         reviewers = set()
 
         for review in pr.get_reviews():
-            if review.user.name == pr.user.name:
+            reviewer = review.user.name
+            if reviewer is None:
+                # As with authors, sometimes there's no real name set.
+                reviewer = review.user.login
+
+            if reviewer == author:
                 # It's not interesting to know when people submit self-reviews.
                 continue
-            if review.user.name is None:
-                # I think this happens when a bot does a review.  I also don't
-                # care about that.
-                continue
 
-            reviewers.add(review.user.name)
+            reviewers.add(reviewer)
 
-        all_users.add(pr.user.name)
+        all_users.add(author)
         all_users.update(reviewers)
 
         for reviewer in reviewers:
             # We need to merge together A->B and B->A.  This is a pain to do
             # later, so we'll pull them together into a single hash key right
             # now.
-            key = tuple(sorted((pr.user.name, reviewer)))
+            key = tuple(sorted((author, reviewer)))
             counter[key] += 1
 
 print(counter)
