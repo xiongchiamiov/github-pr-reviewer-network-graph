@@ -6,6 +6,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 
 from github import Github
+from jinja2 import Environment, FileSystemLoader
 
 gh = Github(os.environ['GITHUB_TOKEN'])
 
@@ -52,3 +53,24 @@ for repo_name in repos:
 print(counter)
 print(i)
 print(all_users)
+
+users = {}
+i = 0
+for user in all_users:
+    users[user] = i
+    i += 1
+
+edges = []
+for author, reviewers in counter.items():
+    for reviewer, count in reviewers.items():
+        # FIXME: We create duplicate edges (from A->B and B->A) and need to
+        # merge them.
+        edges.append({
+            'from': users[author],
+            'to': users[reviewer],
+            'value': count,
+        })
+
+env = Environment(loader=FileSystemLoader('.'))
+with open('index.html', 'w') as f:
+    f.write(env.get_template('template.html').render(users=users, edges=edges))
